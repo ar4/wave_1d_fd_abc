@@ -109,7 +109,7 @@ contains
 
     real :: f_xx
 
-    call second_x_deriv(f, i, dx, nx_padded, f_xx)
+    f_xx = second_x_deriv(f, i, dx, nx_padded)
     fp(i) = (model_padded(i)**2 * dt**2 * f_xx + 2 * f(i) - fp(i))
 
   end subroutine fd_interior
@@ -195,9 +195,9 @@ contains
     real :: f_x
     real :: phi_x
 
-    call second_x_deriv(f, i, dx, nx_padded, f_xx)
-    call first_x_deriv(f, i, dx, nx_padded, f_x)
-    call first_x_deriv(phi, j, dx, nx_padded, phi_x)
+    f_xx = second_x_deriv(f, i, dx, nx_padded)
+    f_x = first_x_deriv(f, i, dx, nx_padded)
+    phi_x = first_x_deriv(phi, j, dx, nx_padded)
 
     ! (9)
     fp(i) = model_padded(i)**2 * dt**2 / (1 + dt * sigma(j) / 2)       &
@@ -230,13 +230,14 @@ contains
   end subroutine add_source
 
 
-  subroutine first_x_deriv(f, i, dx, nx_padded, f_x)
+  pure function first_x_deriv(f, i, dx, nx_padded)
 
     integer, intent (in) :: nx_padded
     real, intent (in), dimension (nx_padded) :: f
     integer, intent (in) :: i
     real, intent (in) :: dx
-    real, intent (out) :: f_x
+
+    real :: first_x_deriv
 
     !f_x = (                                                           &
     !  5*f(i-6)-72*f(i-5)                                              &
@@ -245,23 +246,23 @@ contains
     !  +23760*f(i+1)-7425*f(i+2)                                       &
     !  +2200*f(i+3)-495*f(i+4)                                         &
     !  +72*f(i+5)-5*f(i+6))/(27720*dx)
-    f_x = (                                                            &
+    first_x_deriv = (                                                  &
       1/280*f(i-4) - 4/105*f(i-3) + 1/5*f(i-2) - 4/5*f(i-1)            &
       -1/280*f(i+4) + 4/105*f(i+3) - 1/5*f(i+2) + 4/5*f(i+1)) / dx
 
+  end function first_x_deriv
 
-  end subroutine first_x_deriv
 
-
-  subroutine second_x_deriv(f, i, dx, nx_padded, f_xx)
+  pure function second_x_deriv(f, i, dx, nx_padded)
 
     integer, intent (in) :: nx_padded
     real, intent (in), dimension (nx_padded) :: f
     integer, intent (in) :: i
     real, intent (in) :: dx
-    real, intent (out) :: f_xx
 
-    f_xx = (                                                           &
+    real :: second_x_deriv
+
+    second_x_deriv = (                                                 &
       -735*f(i-8)+15360*f(i-7)                                         &
       -156800*f(i-6)+1053696*f(i-5)                                    & 
       -5350800*f(i-4)+22830080*f(i-3)                                  & 
@@ -273,6 +274,6 @@ contains
       +15360*f(i+7)-735*f(i+8))/(302702400*dx**2)
 
 
-  end subroutine second_x_deriv
+  end function second_x_deriv
 
 end module pml
