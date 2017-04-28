@@ -27,8 +27,7 @@ def model_one():
     max_vel = 2500
     dx = 5
     dt = 0.001
-    # 0.16 secs is chosen to have wave just reach boundary
-    nsteps = np.ceil(0.35/dt).astype(np.int)
+    nsteps = np.ceil(0.27/dt).astype(np.int)
     source = ricker(25, nsteps, dt, 0.05)
     sx = 35
     expected = np.zeros(N)
