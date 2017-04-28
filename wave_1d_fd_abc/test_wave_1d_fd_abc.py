@@ -28,7 +28,7 @@ def model_one():
     dx = 5
     dt = 0.001
     # 0.16 secs is chosen to have wave just reach boundary
-    nsteps = np.ceil(0.16/dt).astype(np.int)
+    nsteps = np.ceil(0.35/dt).astype(np.int)
     source = ricker(25, nsteps, dt, 0.05)
     sx = 35
     expected = np.zeros(N)
@@ -84,14 +84,14 @@ def test_one_reflector(model_one, versions):
     """Verify that the numeric and analytic wavefields are similar."""
 
     for v in versions:
-        _test_version(v, model_one, atol=1.5)
+        _test_version(v, model_one, atol=8.0)
 
 
 def test_allclose(model_two, versions):
     """Verify that all implementations produce similar results."""
 
-    for v in versions[1:]:
-        _test_version(v, model_two, atol=1.5)
+    for v in versions:
+        _test_version(v, model_two, atol=8.0)
 
 
 def _test_version(version, model, atol):

@@ -6,7 +6,7 @@ from wave_1d_fd_abc import pml
 
 class Propagator(object):
     """A finite difference propagator for the 1D wave equation."""
-    def __init__(self, model, abc_width, dx, dt=None):
+    def __init__(self, model, dx, dt=None, abc_width=4):
         self.nx = len(model)
         self.dx = np.float32(dx)
         self.abc_width = abc_width
@@ -28,9 +28,9 @@ class Propagator(object):
 
 class Pml(Propagator):
     """Perfectly Matched Layer."""
-    def __init__(self, model, pml_width, dx, dt=None, sigma=None):
+    def __init__(self, model, dx, dt=None, pml_width=20, sigma=None):
         abc_width = pml_width + 4
-        super(Pml, self).__init__(model, abc_width, dx, dt)
+        super(Pml, self).__init__(model, dx, dt, abc_width)
         self.lpml = [np.zeros(abc_width, np.float32),
                      np.zeros(abc_width, np.float32)
                     ]
@@ -43,14 +43,14 @@ class Pml(Propagator):
         self.current_rpml = self.rpml[0]
         self.previous_rpml = self.rpml[1]
 
-        if sigma:
-            self.sigma = sigma
+        if sigma is None:
+            self.sigma = dx*np.arange(abc_width, 0, -1, dtype=np.float32)
         else:
-            self.sigma = np.ones(abc_width)
+            self.sigma = sigma
 
         self.sigma_x = np.gradient(self.sigma)
 
-    def step(self, num_steps, sources=None, sources_x=None):
+    def step(self, num_steps, sources, sources_x):
         """Propagate wavefield."""
 
         num_sources = sources.shape[0]
