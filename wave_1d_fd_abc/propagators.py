@@ -29,7 +29,7 @@ class Propagator(object):
 class Pml(Propagator):
     """Perfectly Matched Layer."""
     def __init__(self, model, dx, dt=None, pml_width=20, sigma=None):
-        abc_width = pml_width + 4
+        abc_width = pml_width + 16
         super(Pml, self).__init__(model, dx, dt, abc_width)
         self.lpml = [np.zeros(abc_width, np.float32),
                      np.zeros(abc_width, np.float32)
@@ -44,7 +44,8 @@ class Pml(Propagator):
         self.previous_rpml = self.rpml[1]
 
         if sigma is None:
-            self.sigma = dx*np.arange(abc_width, 0, -1, dtype=np.float32)
+            self.sigma = dx*np.arange(abc_width-9, -9, -1, dtype=np.float32)
+            self.sigma[-9:] = 0
         else:
             self.sigma = sigma
 

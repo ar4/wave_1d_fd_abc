@@ -70,20 +70,21 @@ contains
     integer, intent (in) :: step_idx
 
     integer :: i
+    integer, parameter :: pml_pad = 8
 
     ! left PML
-    do i = 5, abc_width
+    do i = pml_pad + 1, abc_width - pml_pad
     call fd_pml(f, fp, lphi, lphip, sigma, sigma_x, model_padded,      &
       dt, dx, nx_padded, abc_width, i, i)
     end do
 
     ! interior (no PML)
-    do i = abc_width + 1, nx_padded - abc_width
+    do i = abc_width - pml_pad + 1, nx_padded - abc_width + pml_pad
     call fd_interior(f, fp, model_padded, dt, dx, nx_padded, i)
     end do
 
     ! right PML
-    do i = nx_padded - abc_width + 1, nx_padded - 4
+    do i = nx_padded - abc_width + pml_pad + 1, nx_padded - pml_pad
     call fd_pml(f, fp, rphi, rphip, sigma, sigma_x, model_padded,      &
       dt, dx, nx_padded, abc_width, i, nx_padded - i + 1)
     end do
@@ -109,7 +110,7 @@ contains
 
     real :: f_xx
 
-    f_xx = second_x_deriv(f, i, dx, nx_padded)
+    f_xx = second_x_deriv(f, i, dx)
     fp(i) = (model_padded(i)**2 * dt**2 * f_xx + 2 * f(i) - fp(i))
 
   end subroutine fd_interior
@@ -195,9 +196,9 @@ contains
     real :: f_x
     real :: phi_x
 
-    f_xx = second_x_deriv(f, i, dx, nx_padded)
-    f_x = first_x_deriv(f, i, dx, nx_padded)
-    phi_x = first_x_deriv(phi, j, dx, nx_padded)
+    f_xx = second_x_deriv(f, i, dx)
+    f_x = first_x_deriv(f, i, dx)
+    phi_x = first_x_deriv(phi, j, dx)
 
     ! (9)
     fp(i) = model_padded(i)**2 * dt**2 / (1 + dt * sigma(j) / 2)       &
@@ -230,33 +231,31 @@ contains
   end subroutine add_source
 
 
-  pure function first_x_deriv(f, i, dx, nx_padded)
+  pure function first_x_deriv(f, i, dx)
 
-    integer, intent (in) :: nx_padded
-    real, intent (in), dimension (nx_padded) :: f
+    real, intent (in), dimension (:) :: f
     integer, intent (in) :: i
     real, intent (in) :: dx
 
     real :: first_x_deriv
 
-    !f_x = (                                                           &
-    !  5*f(i-6)-72*f(i-5)                                              &
-    !  +495*f(i-4)-2200*f(i-3)                                         &
-    !  +7425*f(i-2)-23760*f(i-1)                                       &
-    !  +23760*f(i+1)-7425*f(i+2)                                       &
-    !  +2200*f(i+3)-495*f(i+4)                                         &
-    !  +72*f(i+5)-5*f(i+6))/(27720*dx)
-    first_x_deriv = (                                                  &
-      1/280*f(i-4) - 4/105*f(i-3) + 1/5*f(i-2) - 4/5*f(i-1)            &
-      -1/280*f(i+4) + 4/105*f(i+3) - 1/5*f(i+2) + 4/5*f(i+1)) / dx
+    first_x_deriv = (                                                 &
+      5*f(i-6)-72*f(i-5)                                              &
+      +495*f(i-4)-2200*f(i-3)                                         &
+      +7425*f(i-2)-23760*f(i-1)                                       &
+      +23760*f(i+1)-7425*f(i+2)                                       &
+      +2200*f(i+3)-495*f(i+4)                                         &
+      +72*f(i+5)-5*f(i+6))/(27720*dx)
+    !first_x_deriv = (                                                  &
+    !  1/280*f(i-4) - 4/105*f(i-3) + 1/5*f(i-2) - 4/5*f(i-1)            &
+    !  -1/280*f(i+4) + 4/105*f(i+3) - 1/5*f(i+2) + 4/5*f(i+1)) / dx
 
   end function first_x_deriv
 
 
-  pure function second_x_deriv(f, i, dx, nx_padded)
+  pure function second_x_deriv(f, i, dx)
 
-    integer, intent (in) :: nx_padded
-    real, intent (in), dimension (nx_padded) :: f
+    real, intent (in), dimension (:) :: f
     integer, intent (in) :: i
     real, intent (in) :: dx
 
