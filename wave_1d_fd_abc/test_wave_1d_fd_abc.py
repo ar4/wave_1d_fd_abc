@@ -18,7 +18,7 @@ def green(x0, x1, dx, dt, t, v, v0, f):
     return y
 
 @pytest.fixture
-def model_one():
+def model_one(nsteps=None):
     """Create a model with one reflector, and the expected wavefield."""
     N = 100
     rx = int(N/2)
@@ -27,7 +27,8 @@ def model_one():
     max_vel = 2500
     dx = 5
     dt = 0.001
-    nsteps = np.ceil(0.27/dt).astype(np.int)
+    if nsteps is None:
+        nsteps = np.ceil(0.27/dt).astype(np.int)
     source = ricker(25, nsteps, dt, 0.05)
     sx = 35
     expected = np.zeros(N)

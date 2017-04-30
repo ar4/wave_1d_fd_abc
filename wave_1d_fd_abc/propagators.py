@@ -25,6 +25,15 @@ class Propagator(object):
         self.current_wavefield = self.wavefield[0]
         self.previous_wavefield = self.wavefield[1]
 
+    def steps(self, num_steps, sources, sources_x, interval=1):
+        num_intervals = int(np.floor(num_steps/interval))
+        saved_steps = np.zeros([num_intervals, self.nx_padded])
+        for i in range(num_intervals):
+            self.step(interval, sources[:, i*interval:(i+1)*interval],
+                      sources_x)
+            saved_steps[i, :] = self.current_wavefield[:]
+        return saved_steps
+
 
 class Pml(Propagator):
     """Perfectly Matched Layer."""
