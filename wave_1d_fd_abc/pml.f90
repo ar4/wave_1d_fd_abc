@@ -111,7 +111,7 @@ contains
     real :: f_xx
 
     f_xx = second_x_deriv(f, i, dx)
-    fp(i) = (model_padded(i)**2 * dt**2 * f_xx + 2 * f(i) - fp(i))
+    fp(i) = model_padded(i)**2 * dt**2 * f_xx + 2 * f(i) - fp(i)
 
   end subroutine fd_interior
 
