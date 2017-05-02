@@ -71,7 +71,6 @@ class Pml(Propagator):
                      self.sigma, self.sigma_x,
                      self.model_padded, self.dt, self.dx,
                      sources, sources_x, num_steps,
-                     self.nx_padded, num_sources, source_len,
                      self.abc_width, self.pad_width)
 
         if num_steps%2 != 0:
