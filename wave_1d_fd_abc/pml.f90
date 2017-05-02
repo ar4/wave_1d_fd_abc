@@ -4,28 +4,27 @@ module pml
 
 contains
 
-  subroutine step(f1, f2, lphi1, rphi1, lphi2, rphi2, sigma, sigma_x,  &
+  subroutine step(f1, f2, phi1, phi2, sigma, sigma_x,                  &
       model_padded, dt, dx, sources, sources_x, num_steps, nx_padded,  &
-      num_sources, source_len, abc_width)
+      num_sources, source_len, pml_width, pad_width)
 
     integer, intent (in) :: nx_padded
     integer, intent (in) :: num_sources
     integer, intent (in) :: source_len
-    integer, intent (in) :: abc_width
     real, intent (in out), dimension (nx_padded) :: f1
     real, intent (in out), dimension (nx_padded) :: f2
-    real, intent (in out), dimension (abc_width) :: lphi1
-    real, intent (in out), dimension (abc_width) :: rphi1
-    real, intent (in out), dimension (abc_width) :: lphi2
-    real, intent (in out), dimension (abc_width) :: rphi2
-    real, intent (in), dimension (abc_width) :: sigma
-    real, intent (in), dimension (abc_width) :: sigma_x
+    real, intent (in out), dimension (nx_padded) :: phi1
+    real, intent (in out), dimension (nx_padded) :: phi2
+    real, intent (in), dimension (nx_padded) :: sigma
+    real, intent (in), dimension (nx_padded) :: sigma_x
     real, intent (in), dimension (nx_padded) :: model_padded
     real, intent (in) :: dt
     real, intent (in) :: dx
     real, intent (in), dimension (num_sources, source_len) :: sources
     integer, intent (in), dimension (num_sources) :: sources_x
     integer, intent (in) :: num_steps
+    integer, intent (in) :: pml_width
+    integer, intent (in) :: pad_width
 
     integer :: step_idx
     logical :: even
@@ -33,66 +32,64 @@ contains
     do step_idx = 1, num_steps
     even = (mod (step_idx, 2) == 0)
     if (even) then
-      call one_step(f2, f1, lphi2, rphi2, lphi1, rphi1, sigma, sigma_x,&
+      call one_step(f2, f1, phi2, phi1, sigma, sigma_x,                &
         model_padded, dt, dx, sources, sources_x, step_idx, nx_padded, &
-        num_sources, source_len, abc_width)
+        num_sources, source_len, pml_width, pad_width)
     else
-      call one_step(f1, f2, lphi1, rphi1, lphi2, rphi2, sigma, sigma_x,&
+      call one_step(f1, f2, phi1, phi2, sigma, sigma_x,                &
         model_padded, dt, dx, sources, sources_x, step_idx, nx_padded, &
-        num_sources, source_len, abc_width)
+        num_sources, source_len, pml_width, pad_width)
     end if
     end do
 
   end subroutine step
 
 
-  subroutine one_step(f, fp, lphi, rphi, lphip, rphip, sigma, sigma_x, &
+  subroutine one_step(f, fp, phi, phip, sigma, sigma_x,                &
       model_padded, dt, dx, sources, sources_x, step_idx, nx_padded,   &
-      num_sources, source_len, abc_width)
+      num_sources, source_len, pml_width, pad_width)
 
     integer, intent (in) :: nx_padded
     integer, intent (in) :: num_sources
     integer, intent (in) :: source_len
-    integer, intent (in) :: abc_width
     real, intent (in out), dimension (nx_padded) :: f
     real, intent (in out), dimension (nx_padded) :: fp
-    real, intent (in), dimension (abc_width) :: lphi
-    real, intent (in), dimension (abc_width) :: rphi
-    real, intent (in out), dimension (abc_width) :: lphip
-    real, intent (in out), dimension (abc_width) :: rphip
-    real, intent (in), dimension (abc_width) :: sigma
-    real, intent (in), dimension (abc_width) :: sigma_x
+    real, intent (in), dimension (nx_padded) :: phi
+    real, intent (in out), dimension (nx_padded) :: phip
+    real, intent (in), dimension (nx_padded) :: sigma
+    real, intent (in), dimension (nx_padded) :: sigma_x
     real, intent (in), dimension (nx_padded) :: model_padded
     real, intent (in) :: dt
     real, intent (in) :: dx
     real, intent (in), dimension (num_sources, source_len)  :: sources
     integer, intent (in), dimension (num_sources) :: sources_x
     integer, intent (in) :: step_idx
+    integer, intent (in) :: pml_width
+    integer, intent (in) :: pad_width
 
     integer :: i
-    integer, parameter :: pml_pad = 8
 
     ! left PML
-    do i = pml_pad + 1, abc_width - pml_pad
-    call fd_pml(f, fp, lphi, lphip, sigma, sigma_x, model_padded,      &
-      dt, dx, nx_padded, abc_width, i, i)
+    do i = pad_width + 1, pad_width + 1 + pml_width
+    call fd_pml(f, fp, phi, phip, sigma, sigma_x, model_padded,        &
+      dt, dx, nx_padded, i)
     end do
 
     ! interior (no PML)
-    do i = abc_width - pml_pad + 1, nx_padded - abc_width + pml_pad
+    do i = pad_width + pml_width + 1, nx_padded - pml_width - pad_width
     call fd_interior(f, fp, model_padded, dt, dx, nx_padded, i)
     end do
 
     ! right PML
-    do i = nx_padded - abc_width + pml_pad + 1, nx_padded - pml_pad
-    call fd_pml(f, fp, rphi, rphip, sigma, sigma_x, model_padded,      &
-      dt, dx, nx_padded, abc_width, i, nx_padded - i + 1)
+    do i = nx_padded - pml_width - pad_width + 1, nx_padded - pad_width
+    call fd_pml(f, fp, phi, phip, sigma, sigma_x, model_padded,        &
+      dt, dx, nx_padded, i)
     end do
 
     ! source term
     do i = 1, num_sources
     call add_source(fp, model_padded, dt, sources(i, step_idx),        &
-      sources_x(i), nx_padded, abc_width)
+      sources_x(i), nx_padded, pml_width + pad_width)
     end do
 
   end subroutine one_step
@@ -117,21 +114,19 @@ contains
 
   
   subroutine fd_pml(f, fp, phi, phip, sigma, sigma_x, model_padded,    &
-      dt, dx, nx_padded, abc_width, i, j)
+      dt, dx, nx_padded, i)
 
     integer, intent (in) :: nx_padded
-    integer, intent (in) :: abc_width
     real, intent (in), dimension (nx_padded) :: f
     real, intent (in out), dimension (nx_padded) :: fp
-    real, intent (in), dimension (abc_width) :: phi
-    real, intent (in out), dimension (abc_width) :: phip
-    real, intent (in), dimension (abc_width) :: sigma
-    real, intent (in), dimension (abc_width) :: sigma_x
+    real, intent (in), dimension (nx_padded) :: phi
+    real, intent (in out), dimension (nx_padded) :: phip
+    real, intent (in), dimension (nx_padded) :: sigma
+    real, intent (in), dimension (nx_padded) :: sigma_x
     real, intent (in), dimension (nx_padded) :: model_padded
     real, intent (in) :: dt
     real, intent (in) :: dx
     integer, intent (in) :: i
-    integer, intent (in) :: j
 
     ! Based on PML explanation by Steven G. Johnson
     ! http://math.mit.edu/~stevenj/18.369/pml.pdf
@@ -198,22 +193,22 @@ contains
 
     f_xx = second_x_deriv(f, i, dx)
     f_x = first_x_deriv(f, i, dx)
-    phi_x = first_x_deriv(phi, j, dx)
+    phi_x = first_x_deriv(phi, i, dx)
 
     ! (9)
-    fp(i) = model_padded(i)**2 * dt**2 / (1 + dt * sigma(j) / 2)       &
-            * (f_xx - (sigma_x(j) * phi(j) + sigma(j) * phi_x))        &
-            + dt * sigma(j) / (2 + dt * sigma(j)) * fp(i)              &
-            + 1 / (1 + dt * sigma(j) / 2) * (2 * f(i) - fp(i))
+    fp(i) = model_padded(i)**2 * dt**2 / (1 + dt * sigma(i) / 2)       &
+            * (f_xx - (sigma_x(i) * phi(i) + sigma(i) * phi_x))        &
+            + dt * sigma(i) / (2 + dt * sigma(i)) * fp(i)              &
+            + 1 / (1 + dt * sigma(i) / 2) * (2 * f(i) - fp(i))
 
     ! (10)
-    phip(j) = dt * f_x + phi(j) * (1 - dt * sigma(j))
+    phip(i) = dt * f_x + phi(i) * (1 - dt * sigma(i))
 
   end subroutine fd_pml
 
 
   subroutine add_source(fp, model_padded, dt, source, source_x,        &
-      nx_padded, abc_width)
+      nx_padded, total_pad)
 
     integer, intent (in) :: nx_padded
     real, intent (in out), dimension (nx_padded) :: fp
@@ -221,11 +216,11 @@ contains
     real, intent (in) :: dt
     real, intent (in)  :: source
     integer, intent (in) :: source_x
-    integer, intent (in) :: abc_width
+    integer, intent (in) :: total_pad
 
     integer :: sx
 
-    sx = source_x + abc_width + 1;
+    sx = source_x + total_pad + 1;
     fp(sx) = fp(sx) + (model_padded(sx)**2 * dt**2 * source)
 
   end subroutine add_source

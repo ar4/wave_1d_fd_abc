@@ -32,7 +32,7 @@ class Propagator(object):
         num_intervals = int(np.floor(num_steps/interval))
         saved_steps = np.zeros([num_intervals, self.nx_padded])
         for i in range(num_intervals):
-            self.py_step(interval, sources[:, i*interval:(i+1)*interval],
+            self.step(interval, sources[:, i*interval:(i+1)*interval],
                       sources_x)
             saved_steps[i, :] = self.current_wavefield[:]
         return saved_steps
@@ -61,30 +61,27 @@ class Pml(Propagator):
 
         self.sigma_x = np.gradient(self.sigma)
 
-#    def step(self, num_steps, sources, sources_x):
-#        """Propagate wavefield."""
-#
-#        num_sources = sources.shape[0]
-#        source_len = sources.shape[1]
-#        pml.pml.step(self.current_wavefield, self.previous_wavefield,
-#                     self.current_lpml, self.current_rpml,
-#                     self.previous_lpml, self.previous_rpml,
-#                     self.sigma, self.sigma_x,
-#                     self.model_padded, self.dt, self.dx,
-#                     sources, sources_x, num_steps,
-#                     self.nx_padded, num_sources, source_len,
-#                     self.abc_width)
-#
-#        if num_steps%2 != 0:
-#            self.current_wavefield, self.previous_wavefield = \
-#                    self.previous_wavefield, self.current_wavefield
-#            self.current_lpml, self.previous_lpml = \
-#                    self.previous_lpml, self.current_lpml
-#            self.current_rpml, self.previous_rpml = \
-#                    self.previous_rpml, self.current_rpml
-#
-#        return self.current_wavefield[self.abc_width: \
-#                                      self.nx_padded-self.abc_width]
+    def step(self, num_steps, sources, sources_x):
+        """Propagate wavefield."""
+
+        num_sources = sources.shape[0]
+        source_len = sources.shape[1]
+        pml.pml.step(self.current_wavefield, self.previous_wavefield,
+                     self.current_phi, self.previous_phi,
+                     self.sigma, self.sigma_x,
+                     self.model_padded, self.dt, self.dx,
+                     sources, sources_x, num_steps,
+                     self.nx_padded, num_sources, source_len,
+                     self.abc_width, self.pad_width)
+
+        if num_steps%2 != 0:
+            self.current_wavefield, self.previous_wavefield = \
+                    self.previous_wavefield, self.current_wavefield
+            self.current_pml, self.previous_pml = \
+                    self.previous_pml, self.current_pml
+
+        return self.current_wavefield[self.total_pad: \
+                                      self.nx_padded-self.total_pad]
 
 
     def py_step(self, num_steps, sources, sources_x):
@@ -125,42 +122,54 @@ class Pml(Propagator):
                      / (1 - sigma_x[i] * dt / 2) - fp[i])
             phip[i] = dt * f_x + phi[i] * (1 - dt * sigma_x[i])
 
-        lpml_start = self.pad_width
-        interior_start = lpml_start + self.abc_width
-        rpml_start = interior_start + self.nx
-        rpad_start = rpml_start + self.abc_width
+        @jit(nopython=True)
+        def numba_step(f, fp, phi, phip, sigma, sigma_x, model_padded,
+                       dt, dx, pad_width, abc_width, nx, num_steps):
 
-        lpml = range(lpml_start, interior_start)
-        interior = range(interior_start, rpml_start)
-        rpml = range(rpml_start, rpad_start)
+            lpml_start = pad_width
+            interior_start = lpml_start + abc_width
+            rpml_start = interior_start + nx
+            rpad_start = rpml_start + abc_width
 
-        for step in range(num_steps):
-            f = self.current_wavefield
-            fp = self.previous_wavefield
-            phi = self.current_phi
-            phip = self.previous_phi
+            lpml = range(lpml_start, interior_start)
+            interior = range(interior_start, rpml_start)
+            rpml = range(rpml_start, rpad_start)
 
-            # left PML
-            for i in lpml:
-                fd_pml(f, fp, phi, phip, self.sigma, self.sigma_x,
-                       self.model_padded, self.dt, self.dx, i)
+            for step in range(num_steps):
 
-            # interior (no PML)
-            for i in interior:
-                fd_interior(f, fp, self.model_padded, self.dt, self.dx, i)
+                # left PML
+                #for i in lpml:
+                #    fd_pml(f, fp, phi, phip, sigma, sigma_x,
+                #           model_padded, dt, dx, i)
 
-            # right PML
-            #for i in rpml:
-            #    fd_pml(f, fp, phi, phip, self.sigma, self.sigma_x,
-            #           self.model_padded, self.dt, self.dx, i)
+                # interior (no PML)
+                for i in interior:
+                    fd_interior(f, fp, model_padded, dt, dx, i)
 
-            # Add sources
-            for i in range(sources.shape[0]):
-                sx = sources_x[i] + self.abc_width
-                source_amp = sources[i, step]
-                fp[sx] += (self.model_padded[sx]**2 * self.dt**2 * source_amp)
+                # right PML
+                for i in rpml:
+                    fd_pml(f, fp, phi, phip, sigma, sigma_x,
+                           model_padded, dt, dx, i)
 
-            self.current_wavefield = fp
-            self.previous_wavefield = f
-            self.current_phi = phip
-            self.previous_phi = phi
+                # Add sources
+                for i in range(sources.shape[0]):
+                    sx = sources_x[i] + abc_width
+                    source_amp = sources[i, step]
+                    fp[sx] += (model_padded[sx]**2 * dt**2 * source_amp)
+
+                tmp = f
+                f = fp
+                fp = tmp
+                tmp = phi
+                phi = phip
+                phip = tmp
+
+        numba_step(self.current_wavefield, self.previous_wavefield,
+                   self.current_phi, self.previous_phi,
+                   self.sigma, self.sigma_x,
+                   self.model_padded, self.dt, self.dx,
+                   self.pad_width, self.abc_width, self.nx,
+                   num_steps)
+
+        return self.current_wavefield[self.total_pad: \
+                                      self.nx_padded-self.total_pad]
