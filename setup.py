@@ -2,6 +2,7 @@ from setuptools import setup, Extension
 import numpy.distutils.core
 
 pml = numpy.distutils.core.Extension(name='wave_1d_fd_abc.pml', sources=['wave_1d_fd_abc/pml.f90'], extra_f90_compile_args=['-O0', '-march=native', '-g', '-W', '-Wall', '-Wextra', '-pedantic', '-fbounds-check'])
+oneway = numpy.distutils.core.Extension(name='wave_1d_fd_abc.oneway', sources=['wave_1d_fd_abc/oneway.f90'], extra_f90_compile_args=['-O0', '-march=native', '-g', '-W', '-Wall', '-Wextra', '-pedantic', '-fbounds-check'])
 
 numpy.distutils.core.setup(
         name='wave_1d_fd_abc',
@@ -23,5 +24,5 @@ numpy.distutils.core.setup(
             'Programming Language :: Python :: 3.4',
             'Programming Language :: Python :: 3.5',
         ],
-        ext_modules=[pml]
+        ext_modules=[pml, oneway]
 )
