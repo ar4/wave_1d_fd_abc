@@ -76,8 +76,8 @@ class Pml(Propagator):
         if num_steps%2 != 0:
             self.current_wavefield, self.previous_wavefield = \
                     self.previous_wavefield, self.current_wavefield
-            self.current_pml, self.previous_pml = \
-                    self.previous_pml, self.current_pml
+            self.current_phi, self.previous_phi = \
+                    self.previous_phi, self.current_phi
 
         return self.current_wavefield[self.total_pad: \
                                       self.nx_padded-self.total_pad]

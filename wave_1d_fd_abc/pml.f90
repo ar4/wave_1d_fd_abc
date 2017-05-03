@@ -75,7 +75,7 @@ contains
     end do
 
     ! interior (no PML)
-    do i = pad_width + pml_width + 1, nx_padded - pml_width - pad_width
+    do i = pad_width + pml_width + 2, nx_padded - pml_width - pad_width
     call fd_interior(f, fp, model_padded, dt, dx, i)
     end do
 
@@ -140,8 +140,9 @@ contains
     ! substitute (3a) in (3b): u_tt = c^2 * u_xx, which is (1).
     !
     ! For the PML region, we use the wavefield at
-    ! x' = x * (1 + i *  sigma / omega), as this will exponentially
-    ! damp the wavefield. Changing coordinates back to x,
+    ! x' = x + i * f(x) / omega, as this will exponentially
+    ! damp the wavefield. Now u_x' = u_x * (1 + i * sigma / omega),
+    ! where sigma = f_x. Changing coordinates back to x, replace
     ! u_x -> u_x / (1 + i * sigma / omega). Applying this to (2):
     ! phi_t = u_x / (1 + i * sigma / omega)  (4a)
     ! u_t = c^2 * phi_x / (1 + i * sigma / omega)  (4b).
@@ -176,7 +177,7 @@ contains
     !          + dt * sigma / (2 + dt * sigma) * u(t-1)
     !          + 1 / (1 + dt * sigma / 2) * (2 * u(t) - u(t-1))  (9)
     !
-    ! Using a forward difference for u_t in (6a):
+    ! Using a forward difference for phi_t in (6a):
     ! (phi(t+1) - phi(t))/dt = u_x - sigma * phi(t),
     ! Rearranging:
     ! phi(t+1) = dt * u_x + phi(t) * (1 - dt * sigma)  (10)
