@@ -68,19 +68,8 @@ contains
     nx_padded = size(f)
     num_sources = size(sources, dim=1)
 
-    ! left PML
-    do i = pad_width + 1, pad_width + 1 + pml_width
-    call fd_pml(f, fp, phi, phip, sigma, sigma_x, model_padded,        &
-      dt, dx, i)
-    end do
-
-    ! interior (no PML)
-    do i = pad_width + pml_width + 2, nx_padded - pml_width - pad_width
-    call fd_interior(f, fp, model_padded, dt, dx, i)
-    end do
-
-    ! right PML
-    do i = nx_padded - pml_width - pad_width + 1, nx_padded - pad_width
+    ! Propagate
+    do i = pad_width + 1, nx_padded - pad_width
     call fd_pml(f, fp, phi, phip, sigma, sigma_x, model_padded,        &
       dt, dx, i)
     end do
@@ -88,7 +77,7 @@ contains
     ! source term
     do i = 1, num_sources
     call add_source(fp, model_padded, dt, sources(i, step_idx),        &
-      sources_x(i), pml_width + pad_width)
+      sources_x(i), pml_width + pad_width, f, sigma)
     end do
 
   end subroutine one_step
@@ -185,28 +174,39 @@ contains
     ! 
     ! (9) shows how to update u, and (10) shows how to update phi.
 
+!    real :: f_x
+!    real :: phi_x
+!
+!    f_x = first_x_deriv(f, i, dx)
+!
+!    ! (10)
+!    phip(i) = ((model_padded(i) + model_padded(i-1)) / 2) * dt * f_x + phi(i) * (1 - dt * (sigma(i) + sigma(i-1))/2)
+!
+!    phi_x = first_x_deriv(phip, i+1, dx)
+!
+!    ! (9)
+!    fp(i) = model_padded(i) * dt * phi_x + f(i) * (1 - dt * sigma(i))
+
     real :: f_xx
     real :: f_x
     real :: phi_x
+    real :: fac1
+    real :: fac2
 
     f_xx = second_x_deriv(f, i, dx)
     f_x = first_x_deriv(f, i, dx)
     phi_x = first_x_deriv(phi, i, dx)
 
-    ! (9)
-    fp(i) = model_padded(i)**2 * dt**2 / (1 + dt * sigma(i) / 2)       &
-            * (f_xx - (sigma_x(i) * phi(i) + sigma(i) * phi_x))        &
-            + dt * sigma(i) / (2 + dt * sigma(i)) * fp(i)              &
-            + 1 / (1 + dt * sigma(i) / 2) * (2 * f(i) - fp(i))
-
-    ! (10)
-    phip(i) = dt * f_x + phi(i) * (1 - dt * sigma(i))
+    phip(i) = phi(i) - dt * sigma(i)*(phi(i) + f_x)
+    fac1 = (2.0*dt**2 / (2.0 + dt*sigma(i)))
+    fac2 = (model_padded(i)**2)*(f_xx+phi_x) - (fp(i)-2.0*f(i))/dt**2 + sigma(i)*fp(i)/(2.0*dt)
+    fp(i) = fac1 * fac2
 
   end subroutine fd_pml
 
 
   subroutine add_source(fp, model_padded, dt, source, source_x,        &
-      total_pad)
+      total_pad, f, sigma)
 
     real, intent (in out), dimension (:) :: fp
     real, intent (in), dimension (:) :: model_padded
@@ -214,11 +214,20 @@ contains
     real, intent (in)  :: source
     integer, intent (in) :: source_x
     integer, intent (in) :: total_pad
+    real, intent (in), dimension (:) :: f
+    real, intent (in), dimension (:) :: sigma
 
     integer :: sx
+    real :: fac1
+    real :: fac2
 
     sx = source_x + total_pad + 1;
-    fp(sx) = fp(sx) + (model_padded(sx)**2 * dt**2 * source)
+
+    fac1 = (2.0*dt**2 / (2.0 + dt*sigma(sx)))
+    fac2 = (model_padded(sx)**2)*source
+    fp(sx) = fp(sx) + fac1 * fac2
+
+    !fp(sx) = fp(sx) + (model_padded(sx)**2 * dt**2 * source)
 
   end subroutine add_source
 
@@ -231,17 +240,17 @@ contains
 
     real :: first_x_deriv
 
-    !first_x_deriv = (                                                 &
-    !  5*f(i-6)-72*f(i-5)                                              &
-    !  +495*f(i-4)-2200*f(i-3)                                         &
-    !  +7425*f(i-2)-23760*f(i-1)                                       &
-    !  +23760*f(i+1)-7425*f(i+2)                                       &
-    !  +2200*f(i+3)-495*f(i+4)                                         &
-    !  +72*f(i+5)-5*f(i+6))/(27720*dx)
+    first_x_deriv = (                                                 &
+      5*f(i-6)-72*f(i-5)                                              &
+      +495*f(i-4)-2200*f(i-3)                                         &
+      +7425*f(i-2)-23760*f(i-1)                                       &
+      +23760*f(i+1)-7425*f(i+2)                                       &
+      +2200*f(i+3)-495*f(i+4)                                         &
+      +72*f(i+5)-5*f(i+6))/(27720*dx)
     !first_x_deriv = (                                                  &
     !  1/280*f(i-4) - 4/105*f(i-3) + 1/5*f(i-2) - 4/5*f(i-1)            &
     !  -1/280*f(i+4) + 4/105*f(i+3) - 1/5*f(i+2) + 4/5*f(i+1)) / dx
-    first_x_deriv = (f(i+1) - f(i-1))/(2*dx)
+    !first_x_deriv = (f(i) - f(i-1))/(dx)
 
   end function first_x_deriv
 
