@@ -81,8 +81,12 @@ contains
 
     !f_x = first_x_deriv(f, i, dx, 1)
     r = model_padded(i) * dt / dx
+    print *, r
 
-    fp(i) = (1 + r) / 2 * f(i + 1) + (1 - r) / 2 * f(i - 1)
+    !fp(i) = r / 2 * (f(i + 1)- f(i - 1)) + r**2/2/dt *                 &
+    !        (f(i+1) - 2*f(i) + f(i-1)) + f(i) / dt
+    fp(i) = 1 / 2.0 * (f(i + 1) + f(i - 1)) -                          &
+            r / 2 * (f(i + 1) - f(i - 1))
 
   end subroutine fd_interior
 
