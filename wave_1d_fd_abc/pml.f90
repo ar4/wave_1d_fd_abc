@@ -190,17 +190,42 @@ contains
     real :: f_xx
     real :: f_x
     real :: phi_x
+    real :: sig_x
     real :: fac1
     real :: fac2
+
+    ! Pysit - works well
+!    f_xx = second_x_deriv(f, i, dx)
+!    f_x = first_x_deriv(f, i, dx)
+!    phi_x = first_x_deriv(phi, i, dx)
+!
+!    phip(i) = phi(i) - dt * sigma(i)*(phi(i) + f_x)
+!    fac1 = (2.0*dt**2 / (2.0 + dt*sigma(i)))
+!    fac2 = (model_padded(i)**2)*(f_xx+phi_x) - (fp(i)-2.0*f(i))/dt**2 + sigma(i)*fp(i)/(2.0*dt)
+!    fp(i) = fac1 * fac2
 
     f_xx = second_x_deriv(f, i, dx)
     f_x = first_x_deriv(f, i, dx)
     phi_x = first_x_deriv(phi, i, dx)
+    sig_x = first_x_deriv(sigma, i, dx)
 
-    phip(i) = phi(i) - dt * sigma(i)*(phi(i) + f_x)
-    fac1 = (2.0*dt**2 / (2.0 + dt*sigma(i)))
-    fac2 = (model_padded(i)**2)*(f_xx+phi_x) - (fp(i)-2.0*f(i))/dt**2 + sigma(i)*fp(i)/(2.0*dt)
-    fp(i) = fac1 * fac2
+    ! phi_t = u_x - sigma * phi  (6a)
+    phip(i) =  dt * f_x + phi(i) - dt * sigma(i)*phi(i)
+
+    ! u_tt = c^2 * (u_xx - (sigma_x * phi + sigma * phi_x))
+    !        - sigma * u_t (8)
+    !
+    ! u(t+1) = dt^2 * (c^2 * (u_xx - (sigma_x * phi + sigma * phi_x)) - sigma * (u_t+1 - u_t-1)/(2*dt))
+    !         +2*u - u_(t-1)
+    !
+    ! u(t+1) = c^2 * dt^2 / (1 + dt * sigma / 2)
+    !          * (u_xx - (sigma_x * phi + sigma * phi_x))
+    !          + dt * sigma / (2 + dt * sigma) * u(t-1)
+    !          + 1 / (1 + dt * sigma / 2) * (2 * u(t) - u(t-1))  (9)
+    fp(i) = model_padded(i)**2 * dt**2 / (1 + dt * sigma(i)/2) &
+             * (f_xx-(sig_x * phi(i) + sigma(i) * phi_x)) &
+             + dt * sigma(i)*fp(i) / (2 + dt * sigma(i)) &
+            + 1/(1+dt*sigma(i)/2) * (2*f(i) - fp(i))
 
   end subroutine fd_pml
 
