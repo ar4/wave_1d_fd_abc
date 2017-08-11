@@ -76,11 +76,13 @@ contains
     real, intent (in) :: dx
     integer, intent (in) :: i
 
-    real :: f_x
+    !real :: f_x
+    real :: r
 
-    f_x = first_x_deriv(f, i, dx, 1)
+    !f_x = first_x_deriv(f, i, dx, 1)
+    r = model_padded(i) * dt / dx
 
-    fp(i) = -model_padded(i) * dt * f_x + f(i)
+    fp(i) = (1 + r) / 2 * f(i + 1) + (1 - r) / 2 * f(i - 1)
 
   end subroutine fd_interior
 
