@@ -50,7 +50,6 @@ contains
     integer :: i
     integer :: nx_padded
     integer :: num_sources
-    real :: lambda
 
     nx_padded = size(f)
     num_sources = size(sources, dim=1)
@@ -99,7 +98,7 @@ contains
     integer :: sx
 
     sx = source_x + total_pad + 1;
-    fp(sx) = fp(sx) + (model_padded(sx)**2 * dt**2 * source)
+    fp(sx) = fp(sx) + (model_padded(sx) * dt * source)
 
   end subroutine add_source
 
@@ -113,6 +112,8 @@ contains
 
     real :: first_x_deriv
 
+    first_x_deriv = 0.0
+
     if (direction == 1) then
       first_x_deriv = (f(i) - f(i-1))/dx
     else if (direction == -1) then
@@ -120,29 +121,5 @@ contains
     end if
 
   end function first_x_deriv
-
-
-  pure function second_x_deriv(f, i, dx)
-
-    real, intent (in), dimension (:) :: f
-    integer, intent (in) :: i
-    real, intent (in) :: dx
-
-    real :: second_x_deriv
-
-    !second_x_deriv = (                                                 &
-    !  -735*f(i-8)+15360*f(i-7)                                         &
-    !  -156800*f(i-6)+1053696*f(i-5)                                    & 
-    !  -5350800*f(i-4)+22830080*f(i-3)                                  & 
-    !  -94174080*f(i-2)+538137600*f(i-1)                                & 
-    !  -924708642*f(i+0)                                                & 
-    !  +538137600*f(i+1)-94174080*f(i+2)                                & 
-    !  +22830080*f(i+3)-5350800*f(i+4)                                  & 
-    !  +1053696*f(i+5)-156800*f(i+6)                                    & 
-    !  +15360*f(i+7)-735*f(i+8))/(302702400*dx**2)
-    second_x_deriv = (f(i-1) - 2*f(i) + f(i+1))/dx**2
-
-
-  end function second_x_deriv
 
 end module oneway_plain

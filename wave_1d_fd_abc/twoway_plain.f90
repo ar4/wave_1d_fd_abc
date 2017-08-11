@@ -50,7 +50,6 @@ contains
     integer :: i
     integer :: nx_padded
     integer :: num_sources
-    real :: lambda
 
     nx_padded = size(f)
     num_sources = size(sources, dim=1)
@@ -101,24 +100,6 @@ contains
     fp(sx) = fp(sx) + (model_padded(sx)**2 * dt**2 * source)
 
   end subroutine add_source
-
-
-  pure function first_x_deriv(f, i, dx, direction)
-
-    real, intent (in), dimension (:) :: f
-    integer, intent (in) :: i
-    real, intent (in) :: dx
-    integer, intent (in) :: direction
-
-    real :: first_x_deriv
-
-    if (direction == 1) then
-      first_x_deriv = (f(i) - f(i-1))/dx
-    else if (direction == -1) then
-      first_x_deriv = (f(i) - f(i+1))/dx
-    end if
-
-  end function first_x_deriv
 
 
   pure function second_x_deriv(f, i, dx)

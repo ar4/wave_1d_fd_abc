@@ -1,30 +1,10 @@
-from setuptools import setup, Extension
-import numpy.distutils.core
+#!/usr/bin/env python
+def configuration(parent_package='', top_path=None):
+    from numpy.distutils.misc_util import Configuration
+    config = Configuration('wave_1d_fd_abc', parent_package, top_path)
+    config.add_subpackage('wave_1d_fd_abc')
+    return config
 
-pml = numpy.distutils.core.Extension(name='wave_1d_fd_abc.pml', sources=['wave_1d_fd_abc/pml.f90'], extra_f90_compile_args=['-O0', '-march=native', '-g', '-W', '-Wall', '-Wextra', '-pedantic', '-fbounds-check'])
-oneway = numpy.distutils.core.Extension(name='wave_1d_fd_abc.oneway', sources=['wave_1d_fd_abc/oneway.f90'], extra_f90_compile_args=['-O0', '-march=native', '-g', '-W', '-Wall', '-Wextra', '-pedantic', '-fbounds-check'])
-oneway_plain = numpy.distutils.core.Extension(name='wave_1d_fd_abc.oneway_plain', sources=['wave_1d_fd_abc/oneway_plain.f90'], extra_f90_compile_args=['-O0', '-march=native', '-g', '-W', '-Wall', '-Wextra', '-pedantic', '-fbounds-check'])
-twoway_plain = numpy.distutils.core.Extension(name='wave_1d_fd_abc.twoway_plain', sources=['wave_1d_fd_abc/twoway_plain.f90'], extra_f90_compile_args=['-O0', '-march=native', '-g', '-W', '-Wall', '-Wextra', '-pedantic', '-fbounds-check'])
-
-numpy.distutils.core.setup(
-        name='wave_1d_fd_abc',
-        version='0.0.1',
-        description='A comparison of absorbing boundary implementations for 1D scalar wave equation finite difference simulations',
-        url='https://github.com/ar4/wave_1d_fd_abc',
-        author='Alan Richardson',
-        author_email='alan@ausargeo.com',
-        license='MIT',
-        packages=['wave_1d_fd_abc'],
-        install_requires=['numpy','pandas'],
-        classifiers=[
-            'Development Status :: 3 - Alpha',
-            'Intended Audience :: Science/Research',
-            'License :: OSI Approved :: MIT License',
-            'Programming Language :: Python :: 2',
-            'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3',
-            'Programming Language :: Python :: 3.4',
-            'Programming Language :: Python :: 3.5',
-        ],
-        ext_modules=[pml, oneway, oneway_plain, twoway_plain]
-)
+if __name__ == "__main__":
+    from numpy.distutils.core import setup
+    setup(configuration=configuration)
